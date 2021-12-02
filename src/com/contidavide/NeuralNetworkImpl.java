@@ -19,8 +19,6 @@ public class NeuralNetworkImpl implements NeuralNetwork {
     private ActivationFunction activationFunction;
     private CostFunction costFunction;
 
-    Map<Integer, Map<Integer, ArrayList>> s = new HashMap<>();
-
     public NeuralNetworkImpl(final ArrayList<Integer> numberNeuronsForLayer,
                              final ActivationFunction activationFunction,
                              final CostFunction costFunction) {
@@ -34,21 +32,21 @@ public class NeuralNetworkImpl implements NeuralNetwork {
 
     @Override
     public ArrayList<Double> feedforward(final ArrayList<Double> inputNeurons) {
-        ArrayList<Double> neuronsActivations = inputNeurons;
+        ArrayList<Double> outputNeurons = inputNeurons;
         for (int layer = 0; layer < this.numberLayers; layer++) {
             final ArrayList<ArrayList<Double>> neurons = this.getNeurons(layer);
-            final int numberNeurons = this.getNumberNeurons(layer);
-            final ArrayList<Double> neuronsActivation = new ArrayList<>();
+            final int numberNeurons = neurons.size();
+            final ArrayList<Double> neuronsActivations = new ArrayList<>();
             for (int neuron = 0; neuron < numberNeurons; neuron++) {
                 final ArrayList<Double> neuronWeights = neurons.get(neuron);
                 final Double bias = this.getBias(layer, neuron);
-                final double z = this.computeScalarProduct(neuronsActivations, neuronWeights) + bias;
-                neuronsActivation.add(this.activationFunction.computeActivation(z));
+                final double z = this.computeScalarProduct(outputNeurons, neuronWeights) + bias;
+                neuronsActivations.add(this.activationFunction.computeActivation(z));
             }
-            neuronsActivations = neuronsActivation;
+            outputNeurons = neuronsActivations;
         }
 
-        return neuronsActivations;
+        return outputNeurons;
     }
 
     @Override
@@ -87,16 +85,15 @@ public class NeuralNetworkImpl implements NeuralNetwork {
     private ArrayList<ArrayList<Data>> getMiniBatches(final ArrayList<Data> trainData, final int miniBatchLength) {
         final ArrayList<ArrayList<Data>> miniBatches = new ArrayList<>();
         ArrayList<Data> miniBatch = new ArrayList<>();
-        final int trainDataLength = trainData.size();
-        int j = 1;
+        int numberElementsInMiniBatch = 0;
 
         for (Data data : trainData) {
             miniBatch.add(data);
-            j++;
-            if (j == miniBatchLength) {
+            numberElementsInMiniBatch++;
+            if (numberElementsInMiniBatch == miniBatchLength) {
                 miniBatches.add(miniBatch);
                 miniBatch = new ArrayList<>();
-                j = 1;
+                numberElementsInMiniBatch = 0;
             }
         }
         if (!miniBatch.isEmpty()) {
@@ -223,10 +220,10 @@ public class NeuralNetworkImpl implements NeuralNetwork {
         final ArrayList<ArrayList<Double>> zs = zsAndActivations.getElement1();
         final ArrayList<ArrayList<Double>> activations = zsAndActivations.getElement2();
 
-        // Prima equazione fondamentale: Calcolo tutti i valori Delta, di ogni neurone, dell'ultimo layer.
+        // Prima equazione fondamentale: Calcolo tutti i valori Delta, di ogni neurone, dell'ultimo layer
         final ArrayList<Double> zsOfLastLayer = zs.get(zs.size() - 1);
-        final ArrayList<Double> activtionsOfLastLayer = activations.get(activations.size() - 1);
-        ArrayList<Double> deltas = this.getDeltaOfLastLayer(data.getLabelToDouble(), zsOfLastLayer, activtionsOfLastLayer);
+        final ArrayList<Double> activationsOfLastLayer = activations.get(activations.size() - 1);
+        ArrayList<Double> deltas = this.getDeltaOfLastLayer(data.getLabelToDouble(), zsOfLastLayer, activationsOfLastLayer);
 
         // Calcoliamo tutti i valori dei gradienti dei biases e dei weights
         // Inizializzo a 0 tutti i gradienti
@@ -263,20 +260,20 @@ public class NeuralNetworkImpl implements NeuralNetwork {
 
         // Faccio un feedforward memorizzando ogni z ed ogni attivazione di ogni neurone
         for (int layer = 0; layer < this.numberLayers; layer++) {
-            final ArrayList<Double> neuronsZs = new ArrayList<>();
-            final ArrayList<Double> neuronsActivations = new ArrayList<>();
+            final ArrayList<Double> neuronsZsOfLayer = new ArrayList<>();
+            final ArrayList<Double> neuronsActivationsOfLayer = new ArrayList<>();
             final int numberNeurons = this.getNumberNeurons(layer);
             for (int neuron = 0; neuron < numberNeurons; neuron++) {
                 final Double bias = this.getBias(layer, neuron);
                 final ArrayList<Double> neuronWeights = this.getNeuronWeights(layer, neuron);
 
                 final double z = this.computeScalarProduct(activation, neuronWeights) + bias;
-                neuronsZs.add(z);
-                neuronsActivations.add(this.activationFunction.computeActivation(z));
+                neuronsZsOfLayer.add(z);
+                neuronsActivationsOfLayer.add(this.activationFunction.computeActivation(z));
             }
-            zs.add(neuronsZs);
-            activations.add(neuronsActivations);
-            activation = neuronsActivations;
+            zs.add(neuronsZsOfLayer);
+            activations.add(neuronsActivationsOfLayer);
+            activation = neuronsActivationsOfLayer;
         }
 
         return new Pair<>(zs, activations);
@@ -293,9 +290,9 @@ public class NeuralNetworkImpl implements NeuralNetwork {
         ArrayList<Double> delta = new ArrayList<>();
         // Prima equazione fondamentale: Calcoliamo delta
         final int numberOutputNeurons = y.size();
-        for (int i = 0; i < numberOutputNeurons; i++) {
-            final double activationFunctionDerivative = this.activationFunction.computeDerivative(neuronsZs.get(i));
-            final double costFunctionDerivative = this.costFunction.computeDerivative(neuronsActivations.get(i), y.get(i));
+        for (int neuron = 0; neuron < numberOutputNeurons; neuron++) {
+            final double activationFunctionDerivative = this.activationFunction.computeDerivative(neuronsZs.get(neuron));
+            final double costFunctionDerivative = this.costFunction.computeDerivative(neuronsActivations.get(neuron), y.get(neuron));
             // Delta è uguale a: la derivata della funzione di costo * la derivata della funzione di attivazione
             delta.add(activationFunctionDerivative * costFunctionDerivative);
         }
@@ -320,10 +317,10 @@ public class NeuralNetworkImpl implements NeuralNetwork {
 
         // Terza equazione fondementale: Calcoliamo i gradienti dei weights
         for (int neuron = 0; neuron < numberNeurons; neuron++) {
-            final int numberNeuronsWeights = this.getNeuronWeights(layer, neuron).size();
+            final int numberActivations = activationsAtPreviousLayer.size();
             final ArrayList<Double> neuronsWeightsGradients = new ArrayList<>();
-            for (int weight = 0; weight < numberNeuronsWeights; weight++) {
-                neuronsWeightsGradients.add(deltas.get(neuron) * activationsAtPreviousLayer.get(weight));
+            for (int activation = 0; activation < numberActivations; activation++) {
+                neuronsWeightsGradients.add(deltas.get(neuron) * activationsAtPreviousLayer.get(activation));
             }
             weightsGradients.get(layer).set(neuron, neuronsWeightsGradients);
         }
@@ -349,13 +346,13 @@ public class NeuralNetworkImpl implements NeuralNetwork {
                                                                                                                                                   ArrayList<Double> deltas,
                                                                                                                                                   final ArrayList<ArrayList<Double>> activations) {
         final int penultimateLayer = this.numberLayers - 2;
-
         for (int layer = penultimateLayer; layer >= 0; layer--) {
             final ArrayList<Double> neuronsZs = zs.get(layer);
 
             // Calcolo tutte le derivate delle funzioni di attivazione del layer
-            final ArrayList<Double> activationFunctionDerivatives = new ArrayList<>();
-            IntStream.range(0, neuronsZs.size()).forEach(neuron -> activationFunctionDerivatives.add(this.activationFunction.computeDerivative(neuronsZs.get(neuron))));
+            final ArrayList<Double> activationFunctionDerivatives = new ArrayList<>(
+                    neuronsZs.stream().map(neuronsZ -> this.activationFunction.computeDerivative(neuronsZ)).toList()
+            );
 
             // Quarta equazione fondamentale: Calcoliamo i nuovi delta
             // Il nuovo valore di delta è uguale a: prodotto scalere dei valori delta con i pesi che collegano il neurone con i neuroni del livello successivo
@@ -408,8 +405,7 @@ public class NeuralNetworkImpl implements NeuralNetwork {
 
         final Random random = new Random();
         final int numberLayers = this.numberNeuronsForLayer.size();
-        // int currentLayer = 1 perchè i neuroni di input non hanno il bias
-        // currentLayer < this.numberLayers - 1 perchè i neuroni di output non hanno il bias
+        // layer = 1 perchè i neuroni di input non hanno il bias
         for (int layer = 1; layer < numberLayers; layer++) {
             final List<Double> neuronsBiases =
                     IntStream.range(0, this.numberNeuronsForLayer.get(layer)).mapToDouble(i -> random.nextGaussian()).boxed().toList();
@@ -425,15 +421,14 @@ public class NeuralNetworkImpl implements NeuralNetwork {
 
         final Random random = new Random();
         final int numberLayers = this.numberNeuronsForLayer.size();
-        // int currentLayer = 1 perchè i neuroni di input non hanno il bias
-        // currentLayer < this.numberLayers - 1 perchè i neuroni di output non hanno il bias
+        // layer = 1 perchè i neuroni di input non hanno il bias
         for (int layer = 1; layer < numberLayers; layer++) {
             final ArrayList<ArrayList<Double>> neuronsWeigths = new ArrayList<>();
-            final int numberNeuronsPreviousLayer = this.numberNeuronsForLayer.get(layer - 1);
+            final int numberWeights = this.numberNeuronsForLayer.get(layer - 1);
 
             for (int neuron = 0; neuron < this.numberNeuronsForLayer.get(layer); neuron++) {
                 final List<Double> neuronWeights =
-                        IntStream.range(0, numberNeuronsPreviousLayer).mapToDouble(i -> random.nextGaussian()).boxed().toList();
+                        IntStream.range(0, numberWeights).mapToDouble(i -> random.nextGaussian()).boxed().toList();
                 neuronsWeigths.add(new ArrayList<>(neuronWeights));
             }
             weights.add(neuronsWeigths);
@@ -452,7 +447,7 @@ public class NeuralNetworkImpl implements NeuralNetwork {
         }
 
         return (int)predictionsAndLabels.stream()
-                .filter(prectionAndLabel -> prectionAndLabel.getElement1() == prectionAndLabel.getElement2())
+                .filter(prectionAndLabel -> prectionAndLabel.getElement1().equals(prectionAndLabel.getElement2()))
                 .count();
     }
 
