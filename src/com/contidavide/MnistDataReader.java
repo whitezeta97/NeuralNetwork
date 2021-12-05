@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class MnistDataReader {
 
-    public ArrayList<Data> readData(String dataFilePath, String labelFilePath) throws IOException {
+    public ArrayList<Sample> readData(String dataFilePath, String labelFilePath) throws IOException {
         DataInputStream dataInputStream = new DataInputStream(new BufferedInputStream(new FileInputStream(dataFilePath)));
         int magicNumber = dataInputStream.readInt();
         int numberOfItems = dataInputStream.readInt();
@@ -24,46 +24,27 @@ public class MnistDataReader {
         System.out.println("labels magic number is: " + labelMagicNumber);
         System.out.println("number of labels is: " + numberOfLabels);
 
-//        MnistMatrix[] data = new MnistMatrix[numberOfItems];
-//        ArrayList<MnistMatrix> data = new ArrayList<>();
-//
-//        assert numberOfItems == numberOfLabels;
-//
-//        for(int i = 0; i < numberOfItems; i++) {
-//            MnistMatrix mnistMatrix = new MnistMatrix(nRows, nCols);
-//            mnistMatrix.setLabel(labelInputStream.readUnsignedByte());
-//            for (int r = 0; r < nRows; r++) {
-//                for (int c = 0; c < nCols; c++) {
-//                    mnistMatrix.setValue(r, c, dataInputStream.readUnsignedByte());
-//                }
-//            }
-//            data.add(mnistMatrix);
-//        }
-
-
         assert numberOfItems == numberOfLabels;
 
-        final ArrayList<Data> dati = new ArrayList<>();
+        final ArrayList<Sample> samples = new ArrayList<>();
         for(int i = 0; i < numberOfItems; i++) {
             final int number = labelInputStream.readUnsignedByte();
             final ArrayList<Integer> label = new ArrayList<>();
             for (int j = 0; j < 10; j++) {
-                label.add(j == (number - 1) ? 1 : 0);
+                label.add(j == number ? 1 : 0);
             }
 
-            final ArrayList<Integer> dataValue = new ArrayList<>();
+            final ArrayList<Integer> notNormalizedData = new ArrayList<>();
             for (int r = 0; r < nRows; r++) {
                 for (int c = 0; c < nCols; c++) {
-//                    mnistMatrix.setValue(r, c, dataInputStream.readUnsignedByte());
-                    dataValue.add(dataInputStream.readUnsignedByte());
+                    notNormalizedData.add(dataInputStream.readUnsignedByte());
                 }
             }
-            dati.add(new DataImpl(dataValue, label));
+            samples.add(new SampleImpl(notNormalizedData, label));
         }
-
 
         dataInputStream.close();
         labelInputStream.close();
-        return dati;
+        return samples;
     }
 }

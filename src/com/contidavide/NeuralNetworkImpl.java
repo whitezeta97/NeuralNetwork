@@ -50,13 +50,13 @@ public class NeuralNetworkImpl implements NeuralNetwork {
     }
 
     @Override
-    public void trainWithStochasticGradientDescent(final ArrayList<Data> trainData, final Optional<ArrayList<Data>> testData,
+    public void trainWithStochasticGradientDescent(final ArrayList<Sample> trainData, final Optional<ArrayList<Sample>> testData,
                                                    final int numberEpochs, final int miniBatchLength,
                                                    final double learningRate) {
         for (int epoch = 0; epoch < numberEpochs; epoch++) {
             Collections.shuffle(trainData);
-            final ArrayList<ArrayList<Data>> miniBatches = getMiniBatches(trainData, miniBatchLength);
-            for (ArrayList<Data> miniBatch : miniBatches) {
+            final ArrayList<ArrayList<Sample>> miniBatches = getMiniBatches(trainData, miniBatchLength);
+            for (ArrayList<Sample> miniBatch : miniBatches) {
                 this.computeGradientsAndUpdateBiasesAndWeights(miniBatch, learningRate);
             }
 
@@ -82,13 +82,13 @@ public class NeuralNetworkImpl implements NeuralNetwork {
         return z;
     }
 
-    private ArrayList<ArrayList<Data>> getMiniBatches(final ArrayList<Data> trainData, final int miniBatchLength) {
-        final ArrayList<ArrayList<Data>> miniBatches = new ArrayList<>();
-        ArrayList<Data> miniBatch = new ArrayList<>();
+    private ArrayList<ArrayList<Sample>> getMiniBatches(final ArrayList<Sample> trainData, final int miniBatchLength) {
+        final ArrayList<ArrayList<Sample>> miniBatches = new ArrayList<>();
+        ArrayList<Sample> miniBatch = new ArrayList<>();
         int numberElementsInMiniBatch = 0;
 
-        for (Data data : trainData) {
-            miniBatch.add(data);
+        for (Sample sample : trainData) {
+            miniBatch.add(sample);
             numberElementsInMiniBatch++;
             if (numberElementsInMiniBatch == miniBatchLength) {
                 miniBatches.add(miniBatch);
@@ -108,7 +108,7 @@ public class NeuralNetworkImpl implements NeuralNetwork {
      * @param miniBatch
      * @param learningRate
      */
-    private void computeGradientsAndUpdateBiasesAndWeights(final ArrayList<Data> miniBatch, final double learningRate) {
+    private void computeGradientsAndUpdateBiasesAndWeights(final ArrayList<Sample> miniBatch, final double learningRate) {
         // Calcolo la somma di tutti i gradienti dei biases e dei weights sui dati del minibatch
         final Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> biasesAndWeightsGradients = this.computeBiasesAndWeightsGradients(miniBatch);
         final ArrayList<ArrayList<Double>> biasesGradients = biasesAndWeightsGradients.getElement1();
@@ -155,12 +155,12 @@ public class NeuralNetworkImpl implements NeuralNetwork {
      * @return la somma di tutti i gradienti dei biases e dei weights effettuata sul minibatch
      * Il tipo di ritorno Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>>: elemento1 contiene i valori dei gradienti dei biases ed elemento2 contiene i valori dei gradienti dei weights
      */
-    private Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> computeBiasesAndWeightsGradients(final ArrayList<Data> miniBatch) {
+    private Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> computeBiasesAndWeightsGradients(final ArrayList<Sample> miniBatch) {
         final ArrayList<ArrayList<Double>> totalBiasesGradients = this.getZeroBiases();
         final ArrayList<ArrayList<ArrayList<Double>>> totalWeightsGradients = this.getZeroWeights();
 
-        for (Data data : miniBatch) {
-            Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> biasesAndWeightsGradients = this.backpropagation(data);
+        for (Sample sample : miniBatch) {
+            Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> biasesAndWeightsGradients = this.backpropagation(sample);
             final ArrayList<ArrayList<Double>> biasesGradientsOfBackpropagation = biasesAndWeightsGradients.getElement1();
             final ArrayList<ArrayList<ArrayList<Double>>> weightsGradientsOfBackpropagation = biasesAndWeightsGradients.getElement2();
 
@@ -213,17 +213,17 @@ public class NeuralNetworkImpl implements NeuralNetwork {
      * @return tutti i gradienti dei biases e dei weights.
      * Il tipo di ritorno Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>>: elemento1 contiene i valori dei gradienti dei biases ed elemento2 contiene i valori dei gradienti dei weights
      * */
-    private Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> backpropagation(final Data data) {
+    private Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<ArrayList<Double>>>> backpropagation(final Sample sample) {
         // Calcolo di tutti i valori z e tutti i valori di attivazione di ogni neurone, livello per livello
         final Pair<ArrayList<ArrayList<Double>>, ArrayList<ArrayList<Double>>> zsAndActivations =
-                this.feedforwardAndGetAllZsAndActivations(data.geDataToDouble());
+                this.feedforwardAndGetAllZsAndActivations(sample.getNormalizedData());
         final ArrayList<ArrayList<Double>> zs = zsAndActivations.getElement1();
         final ArrayList<ArrayList<Double>> activations = zsAndActivations.getElement2();
 
         // Prima equazione fondamentale: Calcolo tutti i valori Delta, di ogni neurone, dell'ultimo layer
         final ArrayList<Double> zsOfLastLayer = zs.get(zs.size() - 1);
         final ArrayList<Double> activationsOfLastLayer = activations.get(activations.size() - 1);
-        ArrayList<Double> deltas = this.getDeltaOfLastLayer(data.getLabelToDouble(), zsOfLastLayer, activationsOfLastLayer);
+        ArrayList<Double> deltas = this.getDeltaOfLastLayer(sample.getLabelToDouble(), zsOfLastLayer, activationsOfLastLayer);
 
         // Calcoliamo tutti i valori dei gradienti dei biases e dei weights
         // Inizializzo a 0 tutti i gradienti
@@ -437,12 +437,12 @@ public class NeuralNetworkImpl implements NeuralNetwork {
         return weights;
     }
 
-    private int evaluate(final ArrayList<Data> testData) {
+    private int evaluate(final ArrayList<Sample> testData) {
         final ArrayList<Pair<Integer, Integer>> predictionsAndLabels = new ArrayList<>();
 
-        for (Data data : testData) {
-            final int prediction = this.getIndexOfMaxValue(this.feedforward(data.geDataToDouble()));
-            final int label = this.getIndexOfMaxValue(data.getLabelToDouble());
+        for (Sample sample : testData) {
+            final int prediction = this.getIndexOfMaxValue(this.feedforward(sample.getNormalizedData()));
+            final int label = this.getIndexOfMaxValue(sample.getLabelToDouble());
             predictionsAndLabels.add(new Pair<>(prediction, label));
         }
 
