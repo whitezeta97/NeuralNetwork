@@ -1,5 +1,8 @@
 package com.contidavide;
 
+import com.contidavide.activationfunctions.SigmoidActivationFunction;
+import com.contidavide.optimizer.StochasticGradientDescent;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -16,7 +19,7 @@ public class Main {
         testData.forEach(data -> data.setStandardization());
 
         System.out.println("Neural network is building");
-        final NeuralNetwork neuralNetwork = buildNeuralNetwork();
+        final StochasticGradientDescent neuralNetwork = buildNeuralNetwork();
         System.out.println("Neural network is build");
 
         String input = "";
@@ -31,19 +34,18 @@ public class Main {
                 prediction(neuralNetwork, testData);
             } else if ("2".equals(input)) {
                 System.out.println("Train start");
-                neuralNetwork.trainWithStochasticGradientDescent(trainData, Optional.of(testData), 10, 10, 3.0);
+                neuralNetwork.train(trainData, Optional.of(testData), 10, 10, 3.0);
             }
         }
     }
 
-    private static NeuralNetwork buildNeuralNetwork() throws Exception {
+    private static StochasticGradientDescent buildNeuralNetwork() throws Exception {
         return new NeuralNetworkBuildImpl()
-                .addLayer(784)
-                .addLayer(30)
-                .addLayer(10)
+                .addLayer(784, new SigmoidActivationFunction())
+                .addLayer(30, new SigmoidActivationFunction())
+                .addLayer(10, new SigmoidActivationFunction())
                 .addMeanSquareErrorCostFunction()
-                .addSigmoidActivationFunction()
-                .build();
+                .buildStochasticGradientDescent();
     }
 
     private static void prediction(final NeuralNetwork neuralNetwork, final ArrayList<Sample> testData) throws Exception {

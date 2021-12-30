@@ -1,11 +1,13 @@
 package com.contidavide;
 
-public interface NeuralNetworkBuild {
-    NeuralNetworkBuild addLayer(final int numberNeurons) throws Exception;
+import com.contidavide.activationfunctions.ActivationFunction;
+import com.contidavide.optimizer.OptimezerImpl;
+import com.contidavide.optimizer.StochasticGradientDescent;
 
-    NeuralNetworkBuild addSigmoidActivationFunction() throws Exception;
+public interface NeuralNetworkBuild {
+    NeuralNetworkBuild addLayer(final int numberNeurons, final ActivationFunction activationFunction) throws Exception;
 
     NeuralNetworkBuild addMeanSquareErrorCostFunction() throws Exception;
 
-    NeuralNetworkImpl build() throws Exception;
+    StochasticGradientDescent buildStochasticGradientDescent() throws Exception;
 }

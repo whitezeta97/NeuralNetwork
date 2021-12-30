@@ -5,8 +5,4 @@ import java.util.Optional;
 
 public interface NeuralNetwork {
     ArrayList<Double> feedforward(ArrayList<Double> inputNeurons);
-
-    void trainWithStochasticGradientDescent(final ArrayList<Sample> trainData, final Optional<ArrayList<Sample>> testData,
-                                            final int numberEpochs, final int miniBatchLength,
-                                            final double learningRate);
 }
